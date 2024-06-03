@@ -7,19 +7,25 @@ class Minesweeper
         @bomb_amount = 20
         @open_list = []
         @bomb_list = []
+        @flag_list = []
+        @point = 0
+        @flag_amount = @bomb_amount
         @button_list = Array.new(@row[-1] + 1){Array.new(@col[-1] + 1)}
         @root = TkRoot.new do
             title "Minesweeper.exe"
             geometry "300x300"
             resizable false, false
         end
-        # @board = TkLabel.new do
-        #     text "板板"
-        #     grid(row: 0, column: 5)
-        # end
+        @board = TkButton.new(@root) do
+            width 2
+            height 1
+            text "R"
+            bg "green"
+            grid(row: 13, column: 0)
+        end
+        @board.command(proc { remake })
         generate_block
         generate_bomb
-        puts @bomb_list.inspect
     end
     def generate_block
         @row.each do |row|
@@ -31,6 +37,9 @@ class Minesweeper
                     grid(row: row, column: col)
                 end
                 @button.command(proc { click(row, col) })
+                @button.bind("ButtonRelease-3") do
+                    flag(row, col)
+                end
                 @button_list[row][col] = @button
             end
         end
@@ -55,9 +64,14 @@ class Minesweeper
         if @bomb_list.include?([row, col])
             @button_list[row][col].configure("bg", "red")
             @button_list[row][col].configure("state", "disabled")
+            Tk.messageBox(
+                'type'    => "ok",  
+                'title'   => "This is title",
+                'message' => "You lose. try again?"
+            )
+            remake
         else
             open_block(@button_list[row][col], row, col)
-            puts "#{row}, #{col}"
         end
     end
 
@@ -83,7 +97,6 @@ class Minesweeper
                 button.configure("bg", "white")
                 button.configure("state", "disabled")
                 around.each do |ar|
-                    puts "ssst"
                     if ar[0] > @row[-1] or ar[1] > @col[-1]
                         nil
                     else
@@ -96,6 +109,47 @@ class Minesweeper
                 button.configure("text", combo)
             end
         end
+    end
+
+    def flag(row, col)
+        if @button_list[row][col].bg == "grey"
+            if @flag_amount > 0
+                @flag_amount -= 1
+                @button_list[row][col].configure("bg", "blue")
+                if @bomb_list.include?([row, col])
+                    @point += 1
+                end
+            end
+        elsif @button_list[row][col].bg == "blue"
+            @flag_amount += 1
+            @button_list[row][col].configure("bg", "grey")
+            if @bomb_list.include?([row, col])
+                @point -= 1
+            end
+        end
+        if @point == @bomb_amount
+            Tk.messageBox(
+                'type'    => "ok",  
+                'title'   => "This is title",
+                'message' => "You win. try again?"
+            )
+            remake
+        end
+    end
+
+    def remake
+        @button_list.each do |_|
+            _.each do |button|
+                button.destroy
+            end
+        end
+        @open_list.clear
+        @bomb_list.clear
+        @flag_list.clear
+        @flag_amount = @bomb_amount
+        @point = 0
+        generate_block
+        generate_bomb
     end
 
     def run
